@@ -5,10 +5,10 @@ from typing import Any, List
 from mcp.server.fastmcp import Context, FastMCP
 
 from mcp_server_qdrant.embeddings.factory import create_embedding_provider
-from mcp_server_qdrant.qdrant import Entry, Metadata, QdrantConnector
+from mcp_server_qdrant.chroma import Entry, Metadata, ChromaConnector
 from mcp_server_qdrant.settings import (
     EmbeddingProviderSettings,
-    QdrantSettings,
+    ChromaSettings,
     ToolSettings,
 )
 
@@ -17,31 +17,31 @@ logger = logging.getLogger(__name__)
 
 # FastMCP is an alternative interface for declaring the capabilities
 # of the server. Its API is based on FastAPI.
-class QdrantMCPServer(FastMCP):
+class ChromaMCPServer(FastMCP):
     """
-    A MCP server for Qdrant.
+    A MCP server for ChromaDB.
     """
 
     def __init__(
         self,
         tool_settings: ToolSettings,
-        qdrant_settings: QdrantSettings,
+        chroma_settings: ChromaSettings,
         embedding_provider_settings: EmbeddingProviderSettings,
-        name: str = "mcp-server-qdrant",
+        name: str = "mcp-server-chroma",
         instructions: str | None = None,
         **settings: Any,
     ):
         self.tool_settings = tool_settings
-        self.qdrant_settings = qdrant_settings
+        self.chroma_settings = chroma_settings
         self.embedding_provider_settings = embedding_provider_settings
 
         self.embedding_provider = create_embedding_provider(embedding_provider_settings)
-        self.qdrant_connector = QdrantConnector(
-            qdrant_settings.location,
-            qdrant_settings.api_key,
-            qdrant_settings.collection_name,
+        self.chroma_connector = ChromaConnector(
+            chroma_settings.location,
+            chroma_settings.api_key,
+            chroma_settings.collection_name,
             self.embedding_provider,
-            qdrant_settings.local_path,
+            chroma_settings.local_path,
         )
 
         super().__init__(name=name, instructions=instructions, **settings)
@@ -70,7 +70,7 @@ class QdrantMCPServer(FastMCP):
             metadata: Metadata = None,  # type: ignore
         ) -> str:
             """
-            Store some information in Qdrant.
+            Store some information in ChromaDB.
             :param ctx: The context for the request.
             :param information: The information to store.
             :param metadata: JSON metadata to store with the information, optional.
@@ -78,11 +78,11 @@ class QdrantMCPServer(FastMCP):
                                     the default collection is used.
             :return: A message indicating that the information was stored.
             """
-            await ctx.debug(f"Storing information {information} in Qdrant")
+            await ctx.debug(f"Storing information {information} in ChromaDB")
 
             entry = Entry(content=information, metadata=metadata)
 
-            await self.qdrant_connector.store(entry, collection_name=collection_name)
+            await self.chroma_connector.store(entry, collection_name=collection_name)
             if collection_name:
                 return f"Remembered: {information} in collection {collection_name}"
             return f"Remembered: {information}"
@@ -92,9 +92,9 @@ class QdrantMCPServer(FastMCP):
             information: str,
             metadata: Metadata = None,  # type: ignore
         ) -> str:
-            assert self.qdrant_settings.collection_name is not None
+            assert self.chroma_settings.collection_name is not None
             return await store(
-                ctx, information, self.qdrant_settings.collection_name, metadata
+                ctx, information, self.chroma_settings.collection_name, metadata
             )
 
         async def find(
@@ -103,7 +103,7 @@ class QdrantMCPServer(FastMCP):
             collection_name: str,
         ) -> List[str]:
             """
-            Find memories in Qdrant.
+            Find memories in ChromaDB.
             :param ctx: The context for the request.
             :param query: The query to use for the search.
             :param collection_name: The name of the collection to search in, optional. If not provided,
@@ -116,10 +116,10 @@ class QdrantMCPServer(FastMCP):
                     f"Overriding the collection name with {collection_name}"
                 )
 
-            entries = await self.qdrant_connector.search(
+            entries = await self.chroma_connector.search(
                 query,
                 collection_name=collection_name,
-                limit=self.qdrant_settings.search_limit,
+                limit=self.chroma_settings.search_limit,
             )
             if not entries:
                 return [f"No information found for the query '{query}'"]
@@ -134,36 +134,36 @@ class QdrantMCPServer(FastMCP):
             ctx: Context,
             query: str,
         ) -> List[str]:
-            assert self.qdrant_settings.collection_name is not None
-            return await find(ctx, query, self.qdrant_settings.collection_name)
+            assert self.chroma_settings.collection_name is not None
+            return await find(ctx, query, self.chroma_settings.collection_name)
 
         # Register the tools depending on the configuration
 
-        if self.qdrant_settings.collection_name:
+        if self.chroma_settings.collection_name:
             self.add_tool(
                 find_with_default_collection,
-                name="qdrant-find",
+                name="chroma-find",
                 description=self.tool_settings.tool_find_description,
             )
         else:
             self.add_tool(
                 find,
-                name="qdrant-find",
+                name="chroma-find",
                 description=self.tool_settings.tool_find_description,
             )
 
-        if not self.qdrant_settings.read_only:
+        if not self.chroma_settings.read_only:
             # Those methods can modify the database
 
-            if self.qdrant_settings.collection_name:
+            if self.chroma_settings.collection_name:
                 self.add_tool(
                     store_with_default_collection,
-                    name="qdrant-store",
+                    name="chroma-store",
                     description=self.tool_settings.tool_store_description,
                 )
             else:
                 self.add_tool(
                     store,
-                    name="qdrant-store",
+                    name="chroma-store",
                     description=self.tool_settings.tool_store_description,
                 )

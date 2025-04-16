@@ -1,33 +1,29 @@
+from enum import Enum
 from typing import Optional
 
-from pydantic import Field
-from pydantic_settings import BaseSettings
+from pydantic import BaseSettings, Field
 
-from mcp_server_qdrant.embeddings.types import EmbeddingProviderType
 
-DEFAULT_TOOL_STORE_DESCRIPTION = (
-    "Keep the memory for later use, when you are asked to remember something."
-)
-DEFAULT_TOOL_FIND_DESCRIPTION = (
-    "Look up memories in Qdrant. Use this tool when you need to: \n"
-    " - Find memories by their content \n"
-    " - Access memories for further analysis \n"
-    " - Get some personal information about the user"
-)
+class EmbeddingProviderType(str, Enum):
+    """
+    The type of embedding provider to use.
+    """
+
+    FASTEMBED = "fastembed"
 
 
 class ToolSettings(BaseSettings):
     """
-    Configuration for all the tools.
+    Configuration for the tools.
     """
 
-    tool_store_description: str = Field(
-        default=DEFAULT_TOOL_STORE_DESCRIPTION,
-        validation_alias="TOOL_STORE_DESCRIPTION",
-    )
     tool_find_description: str = Field(
-        default=DEFAULT_TOOL_FIND_DESCRIPTION,
+        default="Find information in the vector database.",
         validation_alias="TOOL_FIND_DESCRIPTION",
+    )
+    tool_store_description: str = Field(
+        default="Store information in the vector database.",
+        validation_alias="TOOL_STORE_DESCRIPTION",
     )
 
 
@@ -46,18 +42,18 @@ class EmbeddingProviderSettings(BaseSettings):
     )
 
 
-class QdrantSettings(BaseSettings):
+class ChromaSettings(BaseSettings):
     """
-    Configuration for the Qdrant connector.
+    Configuration for the ChromaDB connector.
     """
 
-    location: Optional[str] = Field(default=None, validation_alias="QDRANT_URL")
-    api_key: Optional[str] = Field(default=None, validation_alias="QDRANT_API_KEY")
+    location: Optional[str] = Field(default=None, validation_alias="CHROMA_URL")
+    api_key: Optional[str] = Field(default=None, validation_alias="CHROMA_API_KEY")
     collection_name: Optional[str] = Field(
         default=None, validation_alias="COLLECTION_NAME"
     )
     local_path: Optional[str] = Field(
-        default=None, validation_alias="QDRANT_LOCAL_PATH"
+        default=None, validation_alias="CHROMA_LOCAL_PATH"
     )
-    search_limit: int = Field(default=10, validation_alias="QDRANT_SEARCH_LIMIT")
-    read_only: bool = Field(default=False, validation_alias="QDRANT_READ_ONLY")
+    search_limit: int = Field(default=10, validation_alias="CHROMA_SEARCH_LIMIT")
+    read_only: bool = Field(default=False, validation_alias="CHROMA_READ_ONLY")

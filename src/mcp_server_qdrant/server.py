@@ -1,12 +1,12 @@
-from mcp_server_qdrant.mcp_server import QdrantMCPServer
+from mcp_server_qdrant.mcp_server import ChromaMCPServer
 from mcp_server_qdrant.settings import (
     EmbeddingProviderSettings,
-    QdrantSettings,
+    ChromaSettings,
     ToolSettings,
 )
 
-mcp = QdrantMCPServer(
+mcp = ChromaMCPServer(
     tool_settings=ToolSettings(),
-    qdrant_settings=QdrantSettings(),
+    chroma_settings=ChromaSettings(),
     embedding_provider_settings=EmbeddingProviderSettings(),
 )
